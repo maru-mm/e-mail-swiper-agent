@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Email Automatico - Email Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                    </a>
+                    <h1 class="text-2xl font-bold text-gray-900">📡 Monitor Email Automatico</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span id="statusBadge" class="px-3 py-1 rounded-full text-sm font-medium">
+                        Verifica...
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <!-- Info Card -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-2">🤖 Monitoraggio Automatico Email</h2>
+            <p class="text-blue-100">Il sistema controlla automaticamente l'arrivo di nuove email, le salva nel database e le analizza con OpenAI</p>
+        </div>
+
+        <!-- Status Card -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Stato Servizio</h3>
+                <button onclick="refreshStatus()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    🔄 Aggiorna
+                </button>
+            </div>
+
+            <div id="statusInfo" class="space-y-3">
+                <div class="flex items-center space-x-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span class="text-sm text-gray-600">Caricamento stato...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">⚙️ Configurazione</h3>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900">Intervallo di Controllo</p>
+                        <p class="text-sm text-gray-500">Frequenza di controllo nuove email</p>
+                    </div>
+                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded font-semibold">Ogni 15 minuti</span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900">Analisi AI</p>
+                        <p class="text-sm text-gray-500">Categorizzazione automatica con OpenAI</p>
+                    </div>
+                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded font-semibold">✓ Abilitata</span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900">Email Controllate</p>
+                        <p class="text-sm text-gray-500">Ultimi messaggi verificati per ogni controllo</p>
+                    </div>
+                    <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded font-semibold">50 email</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">📋 Log Attività</h3>
+                <button onclick="refreshLogs()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    🔄 Aggiorna Log
+                </button>
+            </div>
+            <div id="logsContainer" class="log-container p-4 max-h-96 overflow-y-auto text-xs">
+                <p class="text-gray-400">Caricamento log...</p>
+            </div>
+        </div>
+
+        <!-- Commands -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">🎮 Comandi Manuali</h3>
+            
+            <div class="space-y-3">
+                <div class="bg-gray-50 rounded p-4">
+                    <p class="font-medium text-gray-900 mb-2">Avviare il monitor:</p>
+                    <code class="text-sm bg-gray-800 text-green-400 px-3 py-2 rounded block">./start_monitor.sh</code>
+                </div>
+
+                <div class="bg-gray-50 rounded p-4">
+                    <p class="font-medium text-gray-900 mb-2">Fermare il monitor:</p>
+                    <code class="text-sm bg-gray-800 text-red-400 px-3 py-2 rounded block">./stop_monitor.sh</code>
+                </div>
+
+                <div class="bg-gray-50 rounded p-4">
+                    <p class="font-medium text-gray-900 mb-2">Controllare lo stato:</p>
+                    <code class="text-sm bg-gray-800 text-blue-400 px-3 py-2 rounded block">./monitor_status.sh</code>
+                </div>
+
+                <div class="bg-gray-50 rounded p-4">
+                    <p class="font-medium text-gray-900 mb-2">Vedere i log in tempo reale:</p>
+                    <code class="text-sm bg-gray-800 text-yellow-400 px-3 py-2 rounded block">tail -f monitor.log</code>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/monitor/status');
+                const data = await response.json();
+                
+                const statusBadge = document.getElementById('statusBadge');
+                const statusInfo = document.getElementById('statusInfo');
+                
+                if (data.running) {
+                    statusBadge.textContent = '✅ Attivo';
+                    statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800';
+                    
+                    statusInfo.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                            <span class="font-medium text-gray-900">Monitor in esecuzione</span>
+                        </div>
+                        ${data.pid ? `<p class="text-sm text-gray-600">PID: ${data.pid}</p>` : ''}
+                        <p class="text-sm text-gray-600">Il sistema controlla automaticamente nuove email ogni 15 minuti</p>
+                    `;
+                } else {
+                    statusBadge.textContent = '❌ Non attivo';
+                    statusBadge.className = 'px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800';
+                    
+                    statusInfo.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                            <span class="font-medium text-gray-900">Monitor non in esecuzione</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Esegui <code class="bg-gray-100 px-2 py-1 rounded">./start_monitor.sh</code> per avviare</p>
+                    `;
+                }
+                
+                // Aggiorna i log
+                if (data.last_logs && data.last_logs.length > 0) {
+                    const logsContainer = document.getElementById('logsContainer');
+                    logsContainer.innerHTML = data.last_logs.map(log => `<div>${log}</div>`).join('');
+                }
+                
+            } catch (error) {
+                console.error('Errore nel refresh dello stato:', error);
+            }
+        }
+
+        async function refreshLogs() {
+            await refreshStatus();
+        }
+
+        // Refresh automatico ogni 30 secondi
+        refreshStatus();
+        setInterval(refreshStatus, 30000);
+    </script>
+</body>
+</html>
+

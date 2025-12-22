@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email da {{ sender }} - Email Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">Email da</h1>
+                        <p class="text-sm text-gray-600" id="senderName">{{ sender }}</p>
+                    </div>
+                </div>
+                <span id="emailCount" class="text-sm text-gray-500">Caricamento...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div class="flex flex-wrap gap-4">
+                <select id="filterType" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Tutti i tipi</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="transactional">Transactional</option>
+                    <option value="promotion">Promotion</option>
+                    <option value="personal">Personal</option>
+                    <option value="onboarding">Onboarding</option>
+                    <option value="retention">Retention</option>
+                </select>
+                
+                <select id="filterStage" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Tutti gli stage</option>
+                    <option value="awareness">Awareness</option>
+                    <option value="consideration">Consideration</option>
+                    <option value="conversion">Conversion</option>
+                    <option value="onboarding">Onboarding</option>
+                    <option value="retention">Retention</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Emails List -->
+        <div id="emailsContainer" class="space-y-4">
+            <!-- Le email verranno caricate qui dinamicamente -->
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-4 text-sm text-gray-500">Caricamento email...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const sender = "{{ sender }}";
+        let allEmails = [];
+
+        // Badge di colore per i tipi
+        const typeBadges = {
+            'marketing': 'bg-purple-100 text-purple-800',
+            'transactional': 'bg-green-100 text-green-800',
+            'promotion': 'bg-red-100 text-red-800',
+            'personal': 'bg-blue-100 text-blue-800',
+            'onboarding': 'bg-yellow-100 text-yellow-800',
+            'retention': 'bg-indigo-100 text-indigo-800',
+            'recruiting': 'bg-pink-100 text-pink-800'
+        };
+
+        const stageBadges = {
+            'awareness': 'bg-gray-100 text-gray-800',
+            'consideration': 'bg-blue-100 text-blue-800',
+            'conversion': 'bg-green-100 text-green-800',
+            'onboarding': 'bg-yellow-100 text-yellow-800',
+            'retention': 'bg-purple-100 text-purple-800'
+        };
+
+        function truncateText(text, maxLength = 200) {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        }
+
+        function renderEmail(email) {
+            const typeClass = typeBadges[email.email_type] || 'bg-gray-100 text-gray-800';
+            const stageClass = stageBadges[email.funnel_stage] || 'bg-gray-100 text-gray-800';
+            
+            const urls = email.urls || [];
+            const urlsHtml = urls.length > 0 ? `
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">URLs (${urls.length})</h4>
+                    <div class="space-y-1">
+                        ${urls.slice(0, 5).map(url => `
+                            <a href="${url}" target="_blank" class="text-xs text-blue-600 hover:underline block truncate">
+                                ${url}
+                            </a>
+                        `).join('')}
+                        ${urls.length > 5 ? `<p class="text-xs text-gray-500 mt-1">+ altri ${urls.length - 5} link</p>` : ''}
+                    </div>
+                </div>
+            ` : '';
+            
+            return `
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+                    <!-- Header -->
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">${email.subject || '(Nessun oggetto)'}</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeClass}">
+                                    ${email.email_type}
+                                </span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stageClass}">
+                                    ${email.funnel_stage}
+                                </span>
+                                ${email.pricing_extract ? `
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        💰 ${email.pricing_extract}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-500 ml-4">
+                            <p>${email.date || ''}</p>
+                            ${email.time_usa ? `<p class="text-xs">${email.time_usa} USA</p>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Campaign Type -->
+                    ${email.campaign_type ? `
+                        <div class="mb-3">
+                            <span class="text-xs font-medium text-gray-600">Campaign: </span>
+                            <span class="text-xs text-gray-900">${email.campaign_type}</span>
+                        </div>
+                    ` : ''}
+
+                    <!-- Notes -->
+                    ${email.notes ? `
+                        <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <p class="text-sm text-blue-900">${email.notes}</p>
+                        </div>
+                    ` : ''}
+
+                    <!-- Email Body Preview -->
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-700 whitespace-pre-wrap">${truncateText(email.snippet || email.email_body)}</p>
+                    </div>
+
+                    <!-- Details Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        ${email.target_audience ? `
+                            <div>
+                                <span class="font-semibold text-gray-700">Target Audience:</span>
+                                <p class="text-gray-600 mt-1">${email.target_audience}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${email.product_mentioned ? `
+                            <div>
+                                <span class="font-semibold text-gray-700">Product:</span>
+                                <p class="text-gray-600 mt-1">${email.product_mentioned}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${urlsHtml}
+
+                    <!-- Expand Button -->
+                    <button onclick="showFullEmail('${email.email_id}')" class="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        Vedi dettagli completi →
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderEmails(emails) {
+            const container = document.getElementById('emailsContainer');
+            
+            if (emails.length === 0) {
+                container.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                            </svg>
+                            <p class="mt-4 text-sm text-gray-500">Nessuna email trovata con i filtri selezionati</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = emails.map(email => renderEmail(email)).join('');
+        }
+
+        function filterEmails() {
+            const typeFilter = document.getElementById('filterType').value;
+            const stageFilter = document.getElementById('filterStage').value;
+            
+            let filtered = allEmails;
+            
+            if (typeFilter) {
+                filtered = filtered.filter(email => email.email_type === typeFilter);
+            }
+            
+            if (stageFilter) {
+                filtered = filtered.filter(email => email.funnel_stage === stageFilter);
+            }
+            
+            renderEmails(filtered);
+            document.getElementById('emailCount').textContent = `${filtered.length} email`;
+        }
+
+        async function loadEmails() {
+            try {
+                const response = await fetch(`/api/sender/${encodeURIComponent(sender)}`);
+                allEmails = await response.json();
+                
+                document.getElementById('emailCount').textContent = `${allEmails.length} email`;
+                renderEmails(allEmails);
+            } catch (error) {
+                console.error('Errore nel caricamento delle email:', error);
+                document.getElementById('emailsContainer').innerHTML = `
+                    <div class="text-center py-12">
+                        <p class="text-red-600">Errore nel caricamento delle email</p>
+                    </div>
+                `;
+            }
+        }
+
+        function showFullEmail(emailId) {
+            const email = allEmails.find(e => e.email_id === emailId);
+            if (!email) return;
+            
+            // Crea modal con i dettagli completi
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">${email.subject}</h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div class="prose max-w-none">
+                            <pre class="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 p-4 rounded">${email.email_body || email.snippet}</pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Event listeners per i filtri
+        document.getElementById('filterType').addEventListener('change', filterEmails);
+        document.getElementById('filterStage').addEventListener('change', filterEmails);
+
+        // Carica le email all'avvio
+        loadEmails();
+    </script>
+</body>
+</html>
+

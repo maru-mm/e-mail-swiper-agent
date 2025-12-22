@@ -1,0 +1,60 @@
+# Credenziali OAuth 2.0 - NON CONDIVIDERE!
+credentials.json
+token*.pickle
+google_accounts.json
+.env
+
+# File di output
+emails.json
+tutte_le_email.json
+*.csv
+
+# Upload documenti
+uploads/
+*.pdf
+*.docx
+*.doc
+
+# Monitor logs e PID
+monitor.log
+monitor.pid
+nohup.out
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

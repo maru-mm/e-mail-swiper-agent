@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista Tabella Email - Excel Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+        th {
+            background: #f3f4f6;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td, th {
+            border: 1px solid #e5e7eb;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+        tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        .cell-content {
+            max-height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .link-list {
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .export-btn {
+            transition: all 0.2s;
+        }
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-20">
+        <div class="max-w-full mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                    </a>
+                    <h1 class="text-2xl font-bold text-gray-900">Vista Tabella Email</h1>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500" id="emailCount">-</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-full mx-auto px-4 py-6">
+        <!-- Sender Selection & Export -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4 flex-1">
+                    <label class="text-sm font-semibold text-gray-700">Sender:</label>
+                    <select id="senderSelect" class="flex-1 max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Caricamento...</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="exportToCSV()" class="export-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>Esporta CSV</span>
+                    </button>
+                    <button onclick="exportToExcel()" class="export-btn px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>Esporta Excel</span>
+                    </button>
+                    <button onclick="copyTable()" class="export-btn px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-sm flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Copia</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="table-container" style="max-height: calc(100vh - 250px);">
+                <table id="emailTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="min-width: 200px;">Sender</th>
+                            <th style="min-width: 250px;">Subject (Headline)</th>
+                            <th style="min-width: 150px;">Data</th>
+                            <th style="min-width: 400px;">Body Email</th>
+                            <th style="min-width: 300px;">Link nel Body</th>
+                            <th style="min-width: 120px;">Email Type</th>
+                            <th style="min-width: 120px;">Campaign Type</th>
+                            <th style="min-width: 150px;">Pricing</th>
+                            <th style="min-width: 200px;">Target Audience</th>
+                            <th style="min-width: 200px;">Product</th>
+                            <th style="min-width: 200px;">I Miei Prodotti</th>
+                            <th style="min-width: 180px;">SwipeEmail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="13" class="text-center py-12">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                <p class="mt-4 text-sm text-gray-500">Caricamento dati...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Stats Footer -->
+        <div class="mt-4 text-sm text-gray-600 text-center" id="statsFooter">
+            -
+        </div>
+    </main>
+
+    <script>
+        let currentEmails = [];
+        let currentSender = '';
+        let myProducts = [];
+
+        async function loadMyProducts() {
+            try {
+                const response = await fetch('/api/products');
+                myProducts = await response.json();
+            } catch (error) {
+                console.error('Errore nel caricamento dei prodotti:', error);
+            }
+        }
+
+        async function loadSenders() {
+            try {
+                const response = await fetch('/api/senders');
+                const senders = await response.json();
+                
+                const select = document.getElementById('senderSelect');
+                
+                if (senders.length === 0) {
+                    select.innerHTML = '<option value="">Nessun sender trovato</option>';
+                    return;
+                }
+                
+                select.innerHTML = senders.map(sender => 
+                    `<option value="${sender.sender}">${extractName(sender.sender)} (${sender.count} email)</option>`
+                ).join('');
+                
+                // Carica il primo sender automaticamente
+                if (senders.length > 0) {
+                    loadEmails(senders[0].sender);
+                }
+            } catch (error) {
+                console.error('Errore nel caricamento dei sender:', error);
+            }
+        }
+
+        function extractName(emailStr) {
+            const match = emailStr.match(/^([^<]+)</);
+            return match ? match[1].trim() : emailStr.split('@')[0];
+        }
+
+        async function loadEmails(sender) {
+            currentSender = sender;
+            
+            try {
+                const response = await fetch(`/api/sender/${encodeURIComponent(sender)}`);
+                currentEmails = await response.json();
+                
+                document.getElementById('emailCount').textContent = `${currentEmails.length} email`;
+                renderTable(currentEmails);
+            } catch (error) {
+                console.error('Errore nel caricamento delle email:', error);
+            }
+        }
+
+        function renderTable(emails) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (emails.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="text-center py-12 text-gray-500">
+                            Nessuna email trovata per questo sender
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Genera dropdown prodotti HTML
+            const productsDropdown = myProducts.length > 0 ? 
+                `<select class="text-xs w-full px-2 py-1 border border-gray-300 rounded product-select" onchange="handleProductSelect(this)" data-email-id="">
+                    <option value="">Seleziona prodotto...</option>
+                    ${myProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                </select>` :
+                `<a href="/products" class="text-xs text-blue-600 hover:underline">+ Aggiungi prodotti</a>`;
+            
+            tbody.innerHTML = emails.map((email, index) => `
+                <tr>
+                    <td class="text-center font-medium text-gray-600">${index + 1}</td>
+                    <td><div class="cell-content">${email.sender || '-'}</div></td>
+                    <td><div class="cell-content font-semibold">${email.subject || '(Nessun oggetto)'}</div></td>
+                    <td><div class="cell-content text-xs">${email.date || '-'}</div></td>
+                    <td><div class="cell-content text-sm">${email.email_body || email.snippet || '-'}</div></td>
+                    <td>
+                        <div class="link-list text-xs">
+                            ${(email.urls && email.urls.length > 0) ? 
+                                email.urls.map((url, idx) => 
+                                    `<div class="mb-1"><span class="font-semibold text-blue-600">${idx+1}.</span> <a href="${url}" target="_blank" class="text-blue-600 hover:underline break-all">${url}</a></div>`
+                                ).join('') 
+                                : '<span class="text-gray-400">Nessun link</span>'}
+                        </div>
+                    </td>
+                    <td><div class="cell-content text-xs"><span class="px-2 py-1 rounded bg-purple-100 text-purple-800">${email.email_type || '-'}</span></div></td>
+                    <td><div class="cell-content text-xs"><span class="px-2 py-1 rounded bg-blue-100 text-blue-800">${email.campaign_type || '-'}</span></div></td>
+                    <td><div class="cell-content text-xs font-semibold text-green-700">${email.pricing_extract || '-'}</div></td>
+                    <td><div class="cell-content text-xs">${email.target_audience || '-'}</div></td>
+                    <td><div class="cell-content text-xs">${email.product_mentioned || '-'}</div></td>
+                    <td>
+                        <select class="text-xs w-full px-2 py-1 border border-gray-300 rounded product-select" 
+                                data-email-id="${email.email_id}" 
+                                data-email-index="${index}"
+                                onchange="handleProductSelect(this, ${index})">
+                            <option value="">Seleziona...</option>
+                            ${myProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                        </select>
+                        ${myProducts.length === 0 ? '<a href="/products" class="text-xs text-blue-600 hover:underline block mt-1">+ Aggiungi prodotti</a>' : ''}
+                    </td>
+                    <td>
+                        <button 
+                            id="swipe-btn-${index}"
+                            onclick="startSwipe(${index})" 
+                            class="px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded text-xs font-medium hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            ${myProducts.length === 0 ? 'disabled' : ''}
+                        >
+                            🎨 Inizia Swipe
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updateStats(emails);
+        }
+
+        function updateStats(emails) {
+            const totalLinks = emails.reduce((sum, email) => sum + (email.urls?.length || 0), 0);
+            const avgLinksPerEmail = (totalLinks / emails.length).toFixed(1);
+            
+            document.getElementById('statsFooter').textContent = 
+                `${emails.length} email | ${totalLinks} link totali | ${avgLinksPerEmail} link/email in media`;
+        }
+
+        function exportToCSV() {
+            if (currentEmails.length === 0) {
+                alert('Nessun dato da esportare');
+                return;
+            }
+            
+            // Header CSV
+            const headers = ['#', 'Sender', 'Subject', 'Date', 'Body', 'Links', 'Email Type', 'Campaign Type', 'Pricing', 'Target Audience', 'Product'];
+            
+            // Converti i dati
+            const rows = currentEmails.map((email, index) => [
+                index + 1,
+                email.sender || '',
+                email.subject || '',
+                email.date || '',
+                (email.email_body || email.snippet || '').replace(/"/g, '""'), // Escape quotes
+                (email.urls || []).join('; '),
+                email.email_type || '',
+                email.campaign_type || '',
+                email.pricing_extract || '',
+                email.target_audience || '',
+                email.product_mentioned || ''
+            ]);
+            
+            // Crea CSV
+            let csvContent = headers.map(h => `"${h}"`).join(',') + '\n';
+            csvContent += rows.map(row => 
+                row.map(cell => `"${cell}"`).join(',')
+            ).join('\n');
+            
+            // Download
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `email_${extractName(currentSender)}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            
+            showNotification('✅ CSV esportato con successo!');
+        }
+
+        function exportToExcel() {
+            if (currentEmails.length === 0) {
+                alert('Nessun dato da esportare');
+                return;
+            }
+            
+            // Crea HTML table per Excel
+            let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            html += '<head><meta charset="UTF-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+            html += '<x:Name>Email Data</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head>';
+            html += '<body>';
+            html += document.getElementById('emailTable').outerHTML;
+            html += '</body></html>';
+            
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `email_${extractName(currentSender)}_${new Date().toISOString().split('T')[0]}.xls`;
+            link.click();
+            
+            showNotification('✅ Excel esportato con successo!');
+        }
+
+        function copyTable() {
+            // Crea testo formattato per copia
+            const headers = ['#', 'Sender', 'Subject', 'Date', 'Body', 'Links', 'Type', 'Campaign', 'Pricing', 'Audience', 'Product'];
+            const rows = currentEmails.map((email, index) => [
+                index + 1,
+                email.sender || '',
+                email.subject || '',
+                email.date || '',
+                (email.email_body || email.snippet || '').substring(0, 200),
+                (email.urls || []).length + ' links',
+                email.email_type || '',
+                email.campaign_type || '',
+                email.pricing_extract || '',
+                email.target_audience || '',
+                email.product_mentioned || ''
+            ]);
+            
+            let text = headers.join('\t') + '\n';
+            text += rows.map(row => row.join('\t')).join('\n');
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('✅ Tabella copiata negli appunti!');
+            });
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Event listener per cambio sender
+        document.getElementById('senderSelect').addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadEmails(e.target.value);
+            }
+        });
+
+        function handleProductSelect(selectElement, emailIndex) {
+            const productId = selectElement.value;
+            const emailId = selectElement.dataset.emailId;
+            
+            // Abilita/disabilita il bottone swipe in base alla selezione
+            const swipeBtn = document.getElementById(`swipe-btn-${emailIndex}`);
+            if (swipeBtn) {
+                swipeBtn.disabled = !productId;
+            }
+            
+            // Salva la selezione (opzionale)
+            if (productId) {
+                console.log(`Prodotto ${productId} selezionato per email ${emailId}`);
+            }
+        }
+
+        async function startSwipe(emailIndex) {
+            const email = currentEmails[emailIndex];
+            const select = document.querySelector(`select[data-email-index="${emailIndex}"]`);
+            const productId = select?.value;
+            
+            if (!productId) {
+                alert('Seleziona prima un prodotto dal menu a tendina');
+                return;
+            }
+            
+            // Ottieni il prodotto selezionato
+            const product = myProducts.find(p => p.id == productId);
+            
+            if (!product) {
+                alert('Prodotto non trovato');
+                return;
+            }
+            
+            // Salva lo swipe nel database
+            try {
+                await fetch('/api/swipes', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        email_id: email.email_id,
+                        product_id: productId,
+                        notes: `Swipe da ${email.sender}`
+                    })
+                });
+            } catch (error) {
+                console.error('Errore nel salvare lo swipe:', error);
+            }
+            
+            // Mostra modal con loading e genera lo swipe
+            showSwipeGenerationModal(email, product);
+        }
+
+        async function showSwipeGenerationModal(email, product) {
+            // Mostra modal con loading
+            const loadingModal = document.createElement('div');
+            loadingModal.id = 'loading-modal';
+            loadingModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+            loadingModal.innerHTML = `
+                <div class="bg-white rounded-lg p-8 text-center">
+                    <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto"></div>
+                    <p class="mt-4 text-lg font-semibold text-gray-900">🎨 Generazione Swipe in corso...</p>
+                    <p class="mt-2 text-sm text-gray-600">Adattamento email per ${product.name}</p>
+                </div>
+            `;
+            document.body.appendChild(loadingModal);
+            
+            try {
+                // Chiama l'API per generare lo swipe
+                const response = await fetch('/api/swipe/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        email_body: email.email_body || email.snippet,
+                        email_subject: email.subject,
+                        product_name: product.name,
+                        product_brief: product.brief || ''
+                    })
+                });
+                
+                const swipeResult = await response.json();
+                
+                // Rimuovi loading modal
+                loadingModal.remove();
+                
+                // Mostra modal comparativo
+                showComparisonModal(email, product, swipeResult);
+                
+            } catch (error) {
+                console.error('Errore nella generazione dello swipe:', error);
+                loadingModal.remove();
+                alert('Errore nella generazione dello swipe');
+            }
+        }
+
+        function showComparisonModal(email, product, swipeResult) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+                        <div>
+                            <h3 class="text-xl font-bold">🎨 Email Swipe - Vista Comparativa</h3>
+                            <p class="text-sm opacity-90">Confronto tra email originale e versione swipata per: ${product.name}</p>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <!-- Subject Lines Comparison -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <!-- Original Subject -->
+                            <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                                <h4 class="font-semibold text-blue-900 mb-2 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                    Subject Originale
+                                </h4>
+                                <p class="text-sm text-gray-900 font-medium">${email.subject}</p>
+                            </div>
+                            
+                            <!-- Swiped Subject -->
+                            <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                                <h4 class="font-semibold text-green-900 mb-2 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Subject Swipato
+                                </h4>
+                                <p class="text-sm text-gray-900 font-medium">${swipeResult.swiped_subject}</p>
+                            </div>
+                        </div>
+
+                        <!-- Body Comparison -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Original Body -->
+                            <div>
+                                <div class="bg-blue-100 px-4 py-2 rounded-t-lg border-2 border-b-0 border-blue-200">
+                                    <h4 class="font-semibold text-blue-900 flex items-center">
+                                        <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                                        Email Originale
+                                    </h4>
+                                    <p class="text-xs text-blue-700 mt-1">Da: ${email.sender}</p>
+                                </div>
+                                <div class="bg-blue-50 border-2 border-blue-200 rounded-b-lg p-4 h-96 overflow-y-auto">
+                                    <pre class="whitespace-pre-wrap text-sm text-gray-900 font-sans">${email.email_body || email.snippet}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- Swiped Body -->
+                            <div>
+                                <div class="bg-green-100 px-4 py-2 rounded-t-lg border-2 border-b-0 border-green-200">
+                                    <h4 class="font-semibold text-green-900 flex items-center">
+                                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                                        Email Swipata per ${product.name}
+                                    </h4>
+                                    <p class="text-xs text-green-700 mt-1">Adattata automaticamente</p>
+                                </div>
+                                <div class="bg-green-50 border-2 border-green-200 rounded-b-lg p-4 h-96 overflow-y-auto">
+                                    <pre class="whitespace-pre-wrap text-sm text-gray-900 font-sans">${swipeResult.swiped_body}</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Changes Summary -->
+                        ${swipeResult.changes && swipeResult.changes.length > 0 ? `
+                            <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <h4 class="font-semibold text-yellow-900 mb-3 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Modifiche Applicate
+                                </h4>
+                                <div class="space-y-2">
+                                    ${swipeResult.changes.map(change => `
+                                        <div class="flex items-center text-sm">
+                                            <span class="px-2 py-1 bg-red-100 text-red-800 rounded mr-2">${change.original}</span>
+                                            <svg class="w-4 h-4 text-gray-400 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                            </svg>
+                                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded mr-2">${change.swipe}</span>
+                                            <span class="text-gray-600">${change.description}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Product Brief Reference -->
+                        ${product.brief ? `
+                            <div class="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <h4 class="font-semibold text-purple-900 mb-2 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    </svg>
+                                    Brief Prodotto Utilizzato
+                                </h4>
+                                <div class="text-sm text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                    ${product.brief}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Footer Actions -->
+                    <div class="border-t bg-gray-50 px-6 py-4 flex items-center justify-between flex-shrink-0">
+                        <div class="text-sm text-gray-600">
+                            ⏱️ Generato in ${swipeResult.processing_time}s
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="copySwipedEmail('${swipeResult.swiped_body.replace(/'/g, "\\'")}', '${swipeResult.swiped_subject.replace(/'/g, "\\'")}', this)" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                <span>Copia Swipe</span>
+                            </button>
+                            <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                Chiudi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copySwipedEmail(body, subject, button) {
+            const text = `Subject: ${subject}\n\n${body}`;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>Copiato!</span>';
+                button.classList.add('bg-green-700');
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('bg-green-700');
+                }, 2000);
+            });
+        }
+
+        function showSwipeModal(email, product) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold">🎨 Email Swipe</h3>
+                            <p class="text-sm opacity-90">Analizza e adatta questa email per: ${product.name}</p>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- Email Originale -->
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                Email Originale
+                            </h4>
+                            <div class="space-y-2 text-sm">
+                                <p><strong>Da:</strong> ${email.sender}</p>
+                                <p><strong>Subject:</strong> ${email.subject}</p>
+                                <p><strong>Type:</strong> <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded">${email.email_type}</span></p>
+                                <p><strong>Campaign:</strong> <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded">${email.campaign_type}</span></p>
+                                ${email.pricing_extract ? `<p><strong>Offer:</strong> <span class="text-green-700 font-semibold">${email.pricing_extract}</span></p>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Body Email -->
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Body Email:</h4>
+                            <div class="bg-white border border-gray-300 rounded p-4 max-h-60 overflow-y-auto">
+                                <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans">${email.email_body || email.snippet}</pre>
+                            </div>
+                        </div>
+
+                        <!-- Link -->
+                        ${email.urls && email.urls.length > 0 ? `
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Link (${email.urls.length}):</h4>
+                                <div class="space-y-1 max-h-40 overflow-y-auto">
+                                    ${email.urls.map((url, idx) => `
+                                        <div class="text-xs">
+                                            <span class="font-semibold text-blue-600">${idx+1}.</span>
+                                            <a href="${url}" target="_blank" class="text-blue-600 hover:underline break-all">${url}</a>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Il Tuo Prodotto -->
+                        <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                            <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                </svg>
+                                Il Tuo Prodotto: ${product.name}
+                            </h4>
+                            ${product.brief ? `
+                                <div class="text-sm text-gray-700 whitespace-pre-wrap">
+                                    ${product.brief}
+                                </div>
+                            ` : '<p class="text-sm text-gray-500 italic">Nessun brief configurato</p>'}
+                        </div>
+
+                        <!-- Insights AI -->
+                        <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <h4 class="font-semibold text-gray-900 mb-2 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                </svg>
+                                💡 Come Usare Questo Swipe
+                            </h4>
+                            <ul class="text-sm text-gray-700 space-y-1 list-disc list-inside">
+                                <li>Analizza la struttura del subject line</li>
+                                <li>Studia il copy del body (hook, benefici, CTA)</li>
+                                <li>Nota il tone of voice e lo stile</li>
+                                <li>Adatta gli elementi per il tuo prodotto</li>
+                                <li>Mantieni ciò che funziona, personalizza il resto</li>
+                            </ul>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+                            <button onclick="copyEmailBody('${email.email_id}')" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                📋 Copia Body
+                            </button>
+                            <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Chiudi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copyEmailBody(emailId) {
+            const email = currentEmails.find(e => e.email_id === emailId);
+            if (email) {
+                navigator.clipboard.writeText(email.email_body || email.snippet).then(() => {
+                    showNotification('✅ Body email copiato!');
+                });
+            }
+        }
+
+        // Carica i prodotti e i sender all'avvio
+        loadMyProducts().then(() => loadSenders());
+    </script>
+</body>
+</html>
+
