@@ -17,7 +17,9 @@ uploads/
 
 # Monitor logs e PID
 monitor.log
+monitor_autosync.log
 monitor.pid
+monitor_autosync.pid
 nohup.out
 
 # Python
