@@ -8,6 +8,7 @@ from database import EmailDatabase
 from products_manager import ProductsManager
 from document_processor import DocumentProcessor
 from swipe_generator import SwipeGenerator
+from supabase_sync import SupabaseSync
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from dotenv import load_dotenv
@@ -34,6 +35,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 db = EmailDatabase()
 products_mgr = ProductsManager()
 
+# Inizializza Supabase
+try:
+    supabase_sync = SupabaseSync()
+    print("✅ Supabase connesso")
+except Exception as e:
+    supabase_sync = None
+    print(f"⚠️ Supabase non disponibile: {e}")
+
 # Inizializza il generatore di swipe con OpenAI
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if OPENAI_API_KEY:
@@ -46,61 +55,126 @@ else:
 @app.route('/')
 def index():
     """
-    Homepage con lista dei sender
+    Homepage - Vista tabella con dati da Supabase
     """
-    return render_template('index.html')
+    return render_template('table_view.html')
 
 
 @app.route('/api/senders')
 def get_senders():
     """
-    API: Recupera tutti i sender con conteggio email
+    API: Recupera tutti i sender con conteggio email da Supabase
     """
-    senders = db.get_all_senders()
-    return jsonify(senders)
+    if not supabase_sync:
+        return jsonify({'error': 'Supabase non configurato'}), 500
+    
+    try:
+        emails = supabase_sync.get_all_emails(limit=5000)
+        
+        # Raggruppa per sender
+        sender_counts = {}
+        for email in emails:
+            sender = email.get('sender', 'Unknown')
+            if sender not in sender_counts:
+                sender_counts[sender] = 0
+            sender_counts[sender] += 1
+        
+        # Converti in lista ordinata
+        senders = [
+            {'sender': sender, 'count': count}
+            for sender, count in sender_counts.items()
+        ]
+        senders.sort(key=lambda x: x['count'], reverse=True)
+        
+        return jsonify(senders)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/sender/<path:sender>')
 def get_sender_emails(sender):
     """
-    API: Recupera tutte le email di un sender specifico
+    API: Recupera tutte le email di un sender specifico da Supabase
     """
-    emails = db.get_emails_by_sender(sender)
-    return jsonify(emails)
+    if not supabase_sync:
+        return jsonify({'error': 'Supabase non configurato'}), 500
+    
+    try:
+        emails = supabase_sync.get_emails_by_sender(sender)
+        return jsonify(emails)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/statistics')
 def get_statistics():
     """
-    API: Recupera statistiche generali
+    API: Recupera statistiche generali da Supabase
     """
-    stats = db.get_statistics()
-    return jsonify(stats)
+    if not supabase_sync:
+        return jsonify({'error': 'Supabase non configurato'}), 500
+    
+    try:
+        emails = supabase_sync.get_all_emails(limit=5000)
+        
+        # Calcola statistiche
+        sender_set = set()
+        for email in emails:
+            sender_set.add(email.get('sender', 'Unknown'))
+        
+        stats = {
+            'total_emails': len(emails),
+            'total_senders': len(sender_set)
+        }
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/search')
 def search():
     """
-    API: Cerca email
+    API: Cerca email in Supabase
     """
+    if not supabase_sync:
+        return jsonify({'error': 'Supabase non configurato'}), 500
+    
     query = request.args.get('q', '')
-    field = request.args.get('field', 'all')
     
     if not query:
         return jsonify([])
     
-    results = db.search_emails(query, field)
-    return jsonify(results)
+    try:
+        # Cerca in tutti i campi
+        all_emails = supabase_sync.get_all_emails(limit=5000)
+        query_lower = query.lower()
+        
+        results = [
+            email for email in all_emails
+            if query_lower in (email.get('sender', '') or '').lower()
+            or query_lower in (email.get('subject', '') or '').lower()
+            or query_lower in (email.get('body', '') or '').lower()
+        ]
+        
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/emails')
 def get_all_emails():
     """
-    API: Recupera tutte le email (con limite opzionale)
+    API: Recupera tutte le email da Supabase (con limite opzionale)
     """
-    limit = request.args.get('limit', type=int)
-    emails = db.get_all_emails(limit=limit)
-    return jsonify(emails)
+    if not supabase_sync:
+        return jsonify({'error': 'Supabase non configurato'}), 500
+    
+    try:
+        limit = request.args.get('limit', 1000, type=int)
+        emails = supabase_sync.get_all_emails(limit=limit)
+        return jsonify(emails)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/sender/<path:sender>')
